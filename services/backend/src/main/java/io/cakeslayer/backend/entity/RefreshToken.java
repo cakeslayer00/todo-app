@@ -46,6 +46,6 @@ public class RefreshToken {
     }
 
     public boolean isRevoked() {
-        return revokedAt != null;
+        return revokedAt != null && Instant.now().isAfter(revokedAt);
     }
 }

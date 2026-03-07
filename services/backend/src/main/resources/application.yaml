@@ -7,9 +7,11 @@ scheduler:
 jwt:
   private-key: classpath:private_key.pem
   public-key: classpath:public_key.pem
-  expiration: 900000 # 15 minutes in milliseconds
-  refresh-expiration: 2592000 # 30 days in seconds
+  expiration: 900000
+  refresh-expiration-seconds: 2592000
+  refresh-grace-period-seconds: 30
   issuer: me
+
 
 management:
   endpoints:

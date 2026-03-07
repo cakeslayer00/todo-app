@@ -28,6 +28,10 @@ public class TokenLogoutHandler implements LogoutHandler {
         }
         String token = authorization.substring("Bearer ".length());
 
+        if (!jwtService.isTokenValid(token)) {
+            return;
+        }
+
         UUID tokenId = UUID.fromString(jwtService.extractJTI(token));
 
         refreshTokenService.revokeRefreshToken(tokenId);

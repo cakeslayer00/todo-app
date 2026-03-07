@@ -7,9 +7,9 @@ import java.util.UUID;
 
 public interface RefreshTokenService {
 
-    RefreshToken createRefreshToken(User user);
+    RefreshToken createRefreshToken(User user, String plainToken);
 
-    RefreshToken createRefreshToken(User user, UUID familyId);
+    RefreshToken createRefreshToken(User user, String plainToken, UUID familyId);
 
     RefreshToken validateAndRevoke(String token);
 

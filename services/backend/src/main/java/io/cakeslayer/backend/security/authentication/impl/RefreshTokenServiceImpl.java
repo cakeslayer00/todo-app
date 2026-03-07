@@ -28,7 +28,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private static final String ERR_REFRESH_TOKEN_NOT_FOUND = "Refresh token not found";
     private static final String ERR_REFRESH_TOKEN_EXPIRED = "Refresh token has expired";
     private static final String ERR_REFRESH_TOKEN_REVOKED = "Refresh token has been revoked";
-    private static final int GRACE_PERIOD = 30;
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenFamilyService refreshTokenFamilyService;
@@ -36,20 +35,21 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     @Transactional
-    public RefreshToken createRefreshToken(User user) {
-        return createRefreshToken(user, UUID.randomUUID());
+    public RefreshToken createRefreshToken(User user, String plainToken) {
+        return createRefreshToken(
+                user,
+                plainToken,
+                UUID.randomUUID());
     }
 
     @Override
     @Transactional
-    public RefreshToken createRefreshToken(User user, UUID familyId) {
-        String plainToken = RefreshTokenUtils.generateRefreshToken();
-        
+    public RefreshToken createRefreshToken(User user, String plainToken, UUID familyId) {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(RefreshTokenUtils.hashToken(plainToken));
         refreshToken.setUser(user);
         refreshToken.setFamilyId(familyId);
-        refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.refreshExpiration(), ChronoUnit.SECONDS));
+        refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.refreshExpirationSeconds(), ChronoUnit.SECONDS));
 
         return refreshTokenRepository.save(refreshToken);
     }
@@ -64,15 +64,16 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         validateRefreshToken(refreshToken);
 
-        refreshToken.setRevokedAt(Instant.now().plusSeconds(GRACE_PERIOD));
+        refreshToken.setRevokedAt(Instant.now().plusSeconds(jwtProperties.refreshGracePeriodSeconds()));
         return refreshTokenRepository.save(refreshToken);
     }
 
     @Override
+    @Transactional
     public void revokeRefreshToken(UUID tokenId) {
         refreshTokenRepository.findById(tokenId)
                 .ifPresent(token -> {
-                    token.setRevokedAt(Instant.now().plusSeconds(GRACE_PERIOD));
+                    token.setRevokedAt(Instant.now().plusSeconds(jwtProperties.refreshGracePeriodSeconds()));
                     refreshTokenRepository.save(token);
                 });
     }
