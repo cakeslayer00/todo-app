@@ -46,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
 
         try {
-            userRepository.save(user);
+            userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
             throw new UserAlreadyExistsException(ERR_USER_ALREADY_EXISTS);
         }
