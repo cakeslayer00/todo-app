@@ -4,6 +4,7 @@ import io.cakeslayer.backend.dto.response.ErrorResponse;
 import io.cakeslayer.backend.exception.UserAlreadyExistsException;
 import io.cakeslayer.backend.exception.security.RefreshTokenException;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+@Hidden
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
