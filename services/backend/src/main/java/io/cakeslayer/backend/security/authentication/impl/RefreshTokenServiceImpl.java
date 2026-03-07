@@ -35,23 +35,23 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     @Transactional
-    public String createRefreshToken(User user) {
-        return createRefreshToken(user, UUID.randomUUID());
+    public RefreshToken createRefreshToken(User user, String plainToken) {
+        return createRefreshToken(
+                user,
+                plainToken,
+                UUID.randomUUID());
     }
 
     @Override
     @Transactional
-    public String createRefreshToken(User user, UUID familyId) {
-        String plainToken = RefreshTokenUtils.generateRefreshToken();
-        
+    public RefreshToken createRefreshToken(User user, String plainToken, UUID familyId) {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(RefreshTokenUtils.hashToken(plainToken));
         refreshToken.setUser(user);
         refreshToken.setFamilyId(familyId);
-        refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.refreshExpiration(), ChronoUnit.SECONDS));
+        refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.refreshExpirationSeconds(), ChronoUnit.SECONDS));
 
-        refreshTokenRepository.save(refreshToken);
-        return plainToken;
+        return refreshTokenRepository.save(refreshToken);
     }
 
     @Override
@@ -64,16 +64,18 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         validateRefreshToken(refreshToken);
 
-        refreshToken.setRevokedAt(Instant.now());
+        refreshToken.setRevokedAt(Instant.now().plusSeconds(jwtProperties.refreshGracePeriodSeconds()));
         return refreshTokenRepository.save(refreshToken);
     }
 
     @Override
     @Transactional
-    public void revokeAllByUser(String username) {
-        List<RefreshToken> tokens = refreshTokenRepository.findAllByUser_Username(username);
-        tokens.forEach(rt -> rt.setRevokedAt(Instant.now()));
-        refreshTokenRepository.saveAll(tokens);
+    public void revokeRefreshToken(UUID tokenId) {
+        refreshTokenRepository.findById(tokenId)
+                .ifPresent(token -> {
+                    token.setRevokedAt(Instant.now().plusSeconds(jwtProperties.refreshGracePeriodSeconds()));
+                    refreshTokenRepository.save(token);
+                });
     }
 
     private void validateRefreshToken(RefreshToken token) {

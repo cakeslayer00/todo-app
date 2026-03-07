@@ -13,11 +13,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
 
     Optional<RefreshToken> findByToken(String token);
-
-    List<RefreshToken> findAllByUser_Username(String username);
 
     List<RefreshToken> findAllByFamilyId(UUID familyId);
 
@@ -29,5 +27,3 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Query("DELETE FROM RefreshToken rt WHERE rt.revokedAt IS NOT NULL AND rt.revokedAt < :cutoff")
     int deleteAllByRevokedAtBefore(@Param("cutoff") Instant cutoff);
 }
-
-

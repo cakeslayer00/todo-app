@@ -1,24 +1,10 @@
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: services/backend/Dockerfile
-    volumes:
-      - ./secrets/backend/private_key.pem:/app/config/private_key.pem
-      - ./secrets/backend/public_key.pem:/app/config/public_key.pem
-    env_file:
-      - .env
-    ports:
-      - '8080:8080'
-
   db:
     image: postgres:17.5-alpine3.22
-    container_name: postgres_db
+    container_name: fortnite-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-myapp}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      - .env
     ports:
       - "5432:5432"
     volumes:

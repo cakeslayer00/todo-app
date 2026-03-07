@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
+// Separate service required for REQUIRES_NEW transaction propagation.
+// revokeFamily must commit independently of the caller's transaction
+// so the revocation persists even if the parent transaction rolls back.
 @Service
 @Slf4j
 @RequiredArgsConstructor

@@ -11,8 +11,11 @@ import io.cakeslayer.backend.repository.UserRepository;
 import io.cakeslayer.backend.security.authentication.AuthService;
 import io.cakeslayer.backend.security.authentication.RefreshTokenService;
 import io.cakeslayer.backend.security.jwt.JwtService;
+import io.cakeslayer.backend.security.token.RefreshTokenUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,8 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    private static final String ERR_USERNAME_ALREADY_EXISTS = "User with username '%s' already exists";
-    private static final String ERR_EMAIL_ALREADY_EXISTS = "User with email '%s' already exists";
+    private static final String ERR_USER_ALREADY_EXISTS = "Username or email already exists";
 
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
@@ -38,22 +40,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByUsername(request.username()).isPresent()) {
-            throw new UserAlreadyExistsException(ERR_USERNAME_ALREADY_EXISTS.formatted(request.username()));
-        }
-
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new UserAlreadyExistsException(ERR_EMAIL_ALREADY_EXISTS.formatted(request.email()));
-        }
-
         User user = new User();
         user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
 
-        userRepository.save(user);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new UserAlreadyExistsException(ERR_USER_ALREADY_EXISTS);
+        }
         log.info("New user '{}' is created", request.username());
-        return authenticate(new LoginRequest(request.username(), request.password()));
+        return buildAuthResponse(user);
     }
 
     @Override
@@ -67,22 +65,32 @@ public class AuthServiceImpl implements AuthService {
 
         User user = (User) auth.getPrincipal();
 
-        String accessToken = jwtService.generateToken(user);
-        String refreshToken = refreshTokenService.createRefreshToken(user);
+        return buildAuthResponse(user);
+    }
+
+    @NonNull
+    private AuthResponse buildAuthResponse(User user) {
+        String plainToken = RefreshTokenUtils.generateRefreshToken();
+
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, plainToken);
+        String accessToken = jwtService.generateToken(user, refreshToken.getId());
 
         log.info("User '{}' is authenticated", user.getUsername());
-        return new AuthResponse(user.getUsername(), accessToken, refreshToken);
+        return new AuthResponse(user.getUsername(), accessToken, plainToken);
     }
 
     @Override
     @Transactional
     public AuthResponse refresh(RefreshRequest request) {
-        RefreshToken token = refreshTokenService.validateAndRevoke(request.refreshToken());
+        RefreshToken refreshToken = refreshTokenService.validateAndRevoke(request.refreshToken());
 
-        User user = token.getUser();
-        String accessToken = jwtService.generateToken(user);
-        String newRefreshToken = refreshTokenService.createRefreshToken(user, token.getFamilyId());
+        User user = refreshToken.getUser();
 
-        return new AuthResponse(user.getUsername(), accessToken, newRefreshToken);
+        String plainToken = RefreshTokenUtils.generateRefreshToken();
+
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user, plainToken, refreshToken.getFamilyId());
+        String accessToken = jwtService.generateToken(user, newRefreshToken.getId());
+
+        return new AuthResponse(user.getUsername(), accessToken, plainToken);
     }
 }
